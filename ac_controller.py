@@ -1,22 +1,24 @@
-from tuya_iot import TuyaOpenAPI
+from tuya_iot import TuyaOpenAPI, AuthType
 from requests import get
+from info import keys
+import time
 
 PUBLIC_IP = get('https://api.ipify.org').text
 
-ACCESS_ID = ''
-ACCESS_KEY = ''
+ACCESS_ID = keys[0]
+ACCESS_KEY = keys[1]
 
 # For more info: https://developer.tuya.com/en/docs/iot/api-request?id=Ka4a8uuo1j4t4
 ENDPOINT = "https://openapi.tuyaeu.com"
 
-USERNAME = '4mykvqs8baeuryqcnuwa'
-PASSWORD = 'e674d8a2317a4d8195a60d2e1d3407d0'
+USERNAME = keys[2]
+PASSWORD = keys[3]
 
-MONZANA_ID = '9be82f24b2effa137ctmgx'
+MONZANA_ID = keys[4]
 
 
-openapi = TuyaOpenAPI(ENDPOINT, ACCESS_ID, ACCESS_KEY)
-openapi.login(USERNAME, PASSWORD)
+openapi = TuyaOpenAPI(ENDPOINT, ACCESS_ID, ACCESS_KEY, AuthType.CUSTOM)
+print(openapi.connect(USERNAME, PASSWORD))
 
 
 # def get_weather():
@@ -38,3 +40,50 @@ openapi.login(USERNAME, PASSWORD)
 # commands = {'commands': [{'code': 'switch', 'value': True}]}
 # result = openapi.post(f"/v1.0/iot-03/devices/{FINGERBOT_DEVICE_ID}/commands", commands)
 # print(result)
+
+def get_params():
+    total_time = input("How long should this script control your HA device? (in minutes)")
+    return total_time
+
+def start_heating_phase():
+    commands = {'commands': [{'code': 'switch', 'value': True}, {'code': 'mode', 'value': 'heat'}, {'code': 'set_temperature_c', 'value': '32'}]}
+    result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    return result 
+
+def start_cooling_phase():
+    commands = {'commands': [{'code': 'mode', 'value': 'cooling'}, {'code': 'set_temperature_c', 'value': '16'}]}
+    result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    return result 
+
+def switch_on():
+    commands = {'commands': [{'code': 'switch', 'value': True}]}
+    result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    return result 
+
+def switch_off():
+    commands = {'commands': [{'code': 'switch', 'value': False}]}
+    result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    return result 
+
+def current_temp():
+    result = openapi.get(f"/v1.0/iot-03/devices/{MONZANA_ID}/status")
+    return result 
+
+def main_loop():
+
+    total_time = get_params()
+    max = 32 
+    min = 16
+    start_time = time.time()
+    start_heating_phase()
+    heating = True
+    while (((time.time() - start_time)*60) <= total_time):
+        time.sleep(60)
+        if heating:
+            if current_temp == max:
+                start_cooling_phase()
+                heating = False
+        if not heating:
+            if current_temp == min:
+                switch_off() 
+                break 
