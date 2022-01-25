@@ -1,6 +1,6 @@
 from tuya_iot import TuyaOpenAPI, AuthType
 from requests import get
-from info import keys
+from keys import keys
 import time
 
 PUBLIC_IP = get('https://api.ipify.org').text
