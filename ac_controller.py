@@ -1,6 +1,7 @@
 from tuya_iot import TuyaOpenAPI, AuthType
 from requests import get
 from keys import keys
+import os
 import time
 
 PUBLIC_IP = get('https://api.ipify.org').text
@@ -18,7 +19,7 @@ MONZANA_ID = keys[4]
 
 
 openapi = TuyaOpenAPI(ENDPOINT, ACCESS_ID, ACCESS_KEY, AuthType.CUSTOM)
-print(openapi.connect(USERNAME, PASSWORD))
+reponse = openapi.connect(USERNAME, PASSWORD)
 
 
 # def get_weather():
@@ -42,48 +43,77 @@ print(openapi.connect(USERNAME, PASSWORD))
 # print(result)
 
 def get_params():
-    total_time = input("How long should this script control your HA device? (in minutes)")
+    total_time = input("How long should this script control your HA device? (in minutes)\r\n")
+    print("Set timer to {0} min.".format(total_time))
     return total_time
 
-def start_heating_phase():
-    commands = {'commands': [{'code': 'switch', 'value': True}, {'code': 'mode', 'value': 'heat'}, {'code': 'set_temperature_c', 'value': '32'}]}
+def start_heating_phase(debug=False):
+    commands = {'commands': [{'code': 'temp_set', 'value': 32}]}
     result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    if debug:
+        print(result)
     return result 
 
-def start_cooling_phase():
-    commands = {'commands': [{'code': 'mode', 'value': 'cooling'}, {'code': 'set_temperature_c', 'value': '16'}]}
+def start_cooling_phase(debug=False):
+    commands = {'commands': [{'code': 'temp_set', 'value': 16}]}
     result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    if debug:
+        print(result)
     return result 
 
-def switch_on():
+def switch_on(debug=False):
     commands = {'commands': [{'code': 'switch', 'value': True}]}
     result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    if debug:
+        print(result)
     return result 
 
-def switch_off():
+def switch_off(debug=False):
     commands = {'commands': [{'code': 'switch', 'value': False}]}
     result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    if debug:
+        print(result)
     return result 
 
-def current_temp():
-    result = openapi.get(f"/v1.0/iot-03/devices/{MONZANA_ID}/status")
+def current_temp(debug=False):
+    result = openapi.get(f"/v1.0/iot-03/devices/{MONZANA_ID}/status")["result"][2]["value"]
+    if debug:
+        print(result)
     return result 
+
+def temp_status():
+    return print("Current temperature: {0}".format(current_temp()))
 
 def main_loop():
+    if reponse['success'] == True:
+        print("Successfully connected to Tuya Open API.")
+    else: 
+        print("Connection to Tuya API failed. Shutting down..")
+        os._exit(-1)
 
-    total_time = get_params()
+    total_time = 40.0
+    #total_time = float(get_params())
+    #print(total_time)
     max = 32 
     min = 16
     start_time = time.time()
-    start_heating_phase()
+    #switch_on(True)
+    time.sleep(3)
+    start_heating_phase(True)
+    temp_status()
     heating = True
-    while (((time.time() - start_time)*60) <= total_time):
-        time.sleep(60)
+    while (((time.time() - start_time)/60) <= total_time):
+        time.sleep(30)
+        temp_status()
         if heating:
-            if current_temp == max:
+            if current_temp(True) == max:
                 start_cooling_phase()
                 heating = False
         if not heating:
-            if current_temp == min:
+            if current_temp(True) == min:
                 switch_off() 
                 break 
+
+
+if __name__ == "__main__":
+    main_loop()
