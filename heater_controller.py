@@ -1,11 +1,11 @@
 from tuya_iot import TuyaOpenAPI, AuthType
 from requests import get
-from keys import keys_monzana
+from keys import keys_heater
 import os
 import time
 
 PUBLIC_IP = get('https://api.ipify.org').text
-keys = keys_monzana
+keys = keys_heater
 ACCESS_ID = keys[0]
 ACCESS_KEY = keys[1]
 
@@ -15,7 +15,7 @@ ENDPOINT = "https://openapi.tuyaeu.com"
 USERNAME = keys[2]
 PASSWORD = keys[3]
 
-MONZANA_ID = keys[4] # device ID
+HEATER_ID = keys[4] # device ID
 
 
 openapi = TuyaOpenAPI(ENDPOINT, ACCESS_ID, ACCESS_KEY, AuthType.CUSTOM)
@@ -43,27 +43,27 @@ def start_heating_phase(debug=False):
     Returns:
         result (json object): The Tuya Cloud reponse as a json object.
     """
-    commands = {'commands': [{'code': 'temp_set', 'value': 32}]}
-    result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    commands = {'commands': [{'code': 'temp_set', 'value': 35}]}
+    result = openapi.post(f"/v1.0/iot-03/devices/{HEATER_ID}/commands", commands)
     if debug:
         print(result)
     return result 
 
-def start_cooling_phase(debug=False):
-    """
-    Sets the min temperature as the target temperature.
+# def start_cooling_phase(debug=False):
+#     """
+#     Sets the min temperature as the target temperature.
 
-    Args:
-        debug (bool, optional): Prints the TuyaCloud reponse if True. Defaults to False.
+#     Args:
+#         debug (bool, optional): Prints the TuyaCloud reponse if True. Defaults to False.
 
-    Returns:
-        result (json object): The Tuya Cloud reponse as a json object.
-    """
-    commands = {'commands': [{'code': 'temp_set', 'value': 16}]}
-    result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
-    if debug:
-        print(result)
-    return result 
+#     Returns:
+#         result (json object): The Tuya Cloud reponse as a json object.
+#     """
+#     commands = {'commands': [{'code': 'temp_set', 'value': 16}]}
+#     result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+#     if debug:
+#         print(result)
+#     return result 
 
 def switch_on(debug=False):
     """
@@ -76,7 +76,7 @@ def switch_on(debug=False):
         result (json object): The Tuya Cloud reponse as a json object.
     """
     commands = {'commands': [{'code': 'switch', 'value': True}]}
-    result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    result = openapi.post(f"/v1.0/iot-03/devices/{HEATER_ID}/commands", commands)
     if debug:
         print(result)
     return result 
@@ -92,7 +92,7 @@ def switch_off(debug=False):
         result (json object): The Tuya Cloud reponse as a json object.
     """
     commands = {'commands': [{'code': 'switch', 'value': False}]}
-    result = openapi.post(f"/v1.0/iot-03/devices/{MONZANA_ID}/commands", commands)
+    result = openapi.post(f"/v1.0/iot-03/devices/{HEATER_ID}/commands", commands)
     if debug:
         print(result)
     return result 
@@ -107,7 +107,7 @@ def current_temp(debug=False):
     Returns:
         result (string): The current temperature found in the json response body.
     """
-    result = openapi.get(f"/v1.0/iot-03/devices/{MONZANA_ID}/status")["result"][2]["value"]
+    result = openapi.get(f"/v1.0/iot-03/devices/{HEATER_ID}/status")["result"][2]["value"]
     if debug:
         print(result)
     return result 
@@ -135,10 +135,7 @@ def main_loop():
         os._exit(-1)
 
     total_time = 40.0
-    
-    max = 32 
-    min = 16
-    
+
     start_time = time.time()
     
     switch_on(True)
@@ -149,19 +146,19 @@ def main_loop():
     #16 °C
     
     start_heating_phase(True)
-    temp_status()
-    heating = True
-    while (((time.time() - start_time)/60) <= total_time):
-        time.sleep(30)
-        temp_status()
-        if heating:
-            if current_temp(True) == max: #Finished heating phase? --> switch to cooling
-                start_cooling_phase()
-                heating = False
-        if not heating:
-            if current_temp(True) == min: #Finished cooling phase? --> switch off
-                switch_off() 
-                break 
+    #temp_status()
+    # heating = True
+    # while (((time.time() - start_time)/60) <= total_time):
+    #     time.sleep(30)
+    #     temp_status()
+    #     if heating:
+    #         if current_temp(True) == max: #Finished heating phase? --> switch to cooling
+    #             start_cooling_phase()
+    #             heating = False
+    #     if not heating:
+    #         if current_temp(True) == min: #Finished cooling phase? --> switch off
+    #             switch_off() 
+    #             break 
 
 
 if __name__ == "__main__":
